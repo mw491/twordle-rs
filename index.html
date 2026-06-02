@@ -1,11 +1,21 @@
-<!DOCTYPE html><html><head>
-        <meta charset="utf-8">
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8" />
         <title>Yew App</title>
-        <link rel="stylesheet" href="/twordle/tailwind-d5b2b4678e34a9c2.css">
-        <link rel="stylesheet" href="/twordle/styles-618881c4d39b3cb4.css">
-    
-<link rel="preload" href="/twordle/twordle-960bdd3095e86da7_bg.wasm" as="fetch" type="application/wasm" crossorigin="">
-<link rel="modulepreload" href="/twordle/twordle-960bdd3095e86da7.js"></head>
+        <link rel="stylesheet" href="/twordle/tailwind-dc899ea489464a95.css" integrity="sha384-sGJv46ZN02Ay+19I+tx+1TaotYr5CSKr6cApsTF5FvLnaGrUMywWLzIQL3blqgc0"/>
+        <link rel="stylesheet" href="/twordle/styles-618881c4d39b3cb4.css" integrity="sha384-c2k0yoYIHwiJ1SaRjg59zuShhWjMed7c2E/ShF2IJK9dmhY0qobKU5bpyRPRdXug"/>
+    <link rel="modulepreload" href="/twordle/twordle-daf2b31a9ba05174.js" crossorigin="anonymous" integrity="sha384-JOxKtmUEyIJpwTOEvkpEomfyOMRQDG5zKY3vnrRqGg+tW86yaxTtETviNJyrDKId"><link rel="preload" href="/twordle/twordle-daf2b31a9ba05174_bg.wasm" crossorigin="anonymous" integrity="sha384-CwivBnBqiFa3BtB90LpH6jW4WAFMPTNLxIPw7mSXFN4msUJO/9GYPwa4THSgXo9k" as="fetch" type="application/wasm"></head>
     <body>
+<script type="module">
+import init, * as bindings from '/twordle/twordle-daf2b31a9ba05174.js';
+const wasm = await init({ module_or_path: '/twordle/twordle-daf2b31a9ba05174_bg.wasm' });
 
-<script type="module">import init from '/twordle/twordle-960bdd3095e86da7.js';init('/twordle/twordle-960bdd3095e86da7_bg.wasm');</script></body></html>
+
+window.wasmBindings = bindings;
+
+
+dispatchEvent(new CustomEvent("TrunkApplicationStarted", {detail: {wasm}}));
+
+</script></body>
+</html>
