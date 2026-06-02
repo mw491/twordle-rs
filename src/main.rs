@@ -16,10 +16,10 @@ pub enum Route {
 fn switch(routes: Route) -> Html {
     match routes {
         Route::Daily => html! {
-            <Twordle game_type={GameType::Daily} />
+            <Twordle key="daily" game_type={GameType::Daily} />
         },
         Route::Unlimited => html! {
-            <Twordle game_type={GameType::Unlimited} />
+            <Twordle key="unlimited" game_type={GameType::Unlimited} />
         },
     }
 }
