@@ -15,8 +15,11 @@ pub struct Twordle {
     title: String,
     wordle: String,
     solved: bool,
+    resigned: bool,
     game_started: bool,
     time_started: DateTime<Utc>,
+    time_finished: Option<DateTime<Utc>>,
+    show_modal: bool,
     typed_word: Vec<String>,
     typed_words: Vec<Vec<String>>,
     typed_words_indexes: Vec<usize>,
@@ -40,6 +43,8 @@ pub enum Msg {
     AddLetter(char),
     DeleteLetter,
     SubmitWord,
+    Resign,
+    PlayAgain,
 }
 
 impl Component for Twordle {
@@ -57,8 +62,11 @@ impl Component for Twordle {
             title,
             wordle,
             solved: false,
+            resigned: false,
             game_started: false,
             time_started: Utc::now(),
+            time_finished: None,
+            show_modal: false,
             typed_word: vec![
                 String::from(""),
                 String::from(""),
@@ -74,8 +82,15 @@ impl Component for Twordle {
         }
     }
 
-    fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
-        if self.solved {
+    fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
+        if let Msg::PlayAgain = msg {
+            if ctx.props().game_type == GameType::Unlimited {
+                self.reset_unlimited();
+                return true;
+            }
+            return false;
+        }
+        if self.solved || self.resigned {
             return false;
         }
         match msg {
@@ -127,6 +142,8 @@ impl Component for Twordle {
                 }
                 if self.typed_word.join("") == self.wordle {
                     self.solved = true;
+                    self.time_finished = Some(Utc::now());
+                    self.show_modal = true;
                 }
                 self.typed_word = vec![
                     String::from(""),
@@ -137,18 +154,36 @@ impl Component for Twordle {
                 ];
                 true
             }
+            Msg::Resign => {
+                if self.game_started {
+                    self.resigned = true;
+                    self.time_finished = Some(Utc::now());
+                    self.show_modal = true;
+                    true
+                } else {
+                    false
+                }
+            }
+            Msg::PlayAgain => false,
         }
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
         html! {
             <main class="h-[100dvh] max-h-[100dvh] py-3 text-5xl font-mono bg-neutral-900 text-white flex flex-col justify-between items-center touch-none">
-                <div class="h-[10dvh]">
-                    {&self.title}
+                <div class="h-[10dvh] w-full flex flex-col items-center justify-center gap-1 px-5">
+                    <div>{&self.title}</div>
+                    {
+                        if !self.solved && !self.resigned && self.game_started {
+                            html!{<button onclick={ctx.link().callback(|_| Msg::Resign)} class="text-base bg-neutral-800 hover:bg-neutral-700 px-3 py-1 rounded">{"Resign"}</button>}
+                        } else {
+                            html!{}
+                        }
+                    }
                 </div>
                 <div class="flex flex-col gap-3 h-[70dvh] bg-neutral-800/25 p-5 rounded-md">
                     {
-                        if !self.solved {
+                        if !self.solved && !self.resigned {
                             html!{
                                 <div class="flex gap-3 items-center">
                                     <div class="w-[10%] flex justify-center py-6 lg:py-1 px-9 lg:px-5 mr-3 rounded-md">
@@ -169,7 +204,7 @@ impl Component for Twordle {
                                 </div>
                             }
                         } else {
-                            html!(<div>{self.format_time_from_now()}{self.generate_score()}</div>)
+                            html!{}
                         }
                     }
                     <div class="flex flex-col gap-3 overflow-y-scroll scroll-top-0">
@@ -221,6 +256,41 @@ impl Component for Twordle {
                     </div>
                 </div>
 
+                {
+                    if self.show_modal && (self.solved || self.resigned) {
+                        let title_text = if self.solved { "You Won!" } else { "Game Over" };
+                        let time = self.format_time_from_now();
+                        let turns = self.typed_words.len();
+                        let score = self.generate_score() as i64;
+                        let word = self.wordle.to_uppercase();
+                        let (btn_text, btn_cb): (&str, Callback<MouseEvent>) = if ctx.props().game_type == GameType::Unlimited {
+                            ("New Game", ctx.link().callback(|_: MouseEvent| Msg::PlayAgain))
+                        } else {
+                            ("Play Unlimited", Callback::from(|_: MouseEvent| { let _ = window().unwrap().location().set_href("/unlimited"); }))
+                        };
+                        html!{
+                            <div class="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+                                <div class="bg-neutral-800 rounded-lg p-6 max-w-md w-full text-2xl flex flex-col gap-4">
+                                    <div class="flex justify-between items-center">
+                                        <div class="font-bold">{title_text}</div>
+                                    </div>
+                                    <div class="flex flex-col gap-1 text-left">
+                                        <div>{format!("Time:   {}", time)}</div>
+                                        <div>{format!("Turns:  {}", turns)}</div>
+                                        // <div>{format!("Score:  {}", score)}</div>
+                                        <div>{format!("Word:   {}", word)}</div>
+                                    </div>
+                                    <div class="flex flex-col gap-2">
+                                        <button onclick={btn_cb} class="bg-green-700 py-3 rounded">{btn_text}</button>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    } else {
+                        html!{}
+                    }
+                }
+
             </main>
         }
     }
@@ -264,7 +334,7 @@ impl Twordle {
     }
 
     fn format_time_from_now(&self) -> String {
-        let now = Utc::now();
+        let now = self.time_finished.unwrap_or_else(Utc::now);
 
         let duration = now - self.time_started;
 
@@ -293,11 +363,33 @@ impl Twordle {
     }
 
     fn generate_score(&self) -> f64 {
-        let time_taken = Utc::now() - self.time_started;
+        let time_taken = self.time_finished.unwrap_or_else(Utc::now) - self.time_started;
         let chances_used = self.typed_words.len();
 
         let rating = 100.0 - (time_taken.num_seconds() as f64 + chances_used as f64);
         rating.max(1.0).min(100.0) as f64
+    }
+
+    fn reset_unlimited(&mut self) {
+        self.wordle = pick_word::unlimited();
+        self.solved = false;
+        self.resigned = false;
+        self.game_started = false;
+        self.time_started = Utc::now();
+        self.time_finished = None;
+        self.show_modal = false;
+        self.typed_word = vec![
+            String::from(""),
+            String::from(""),
+            String::from(""),
+            String::from(""),
+            String::from(""),
+        ];
+        self.typed_words = vec![];
+        self.typed_words_indexes = vec![];
+        self.green_letters = vec![];
+        self.yellow_letters = vec![];
+        self.gray_letters = vec![];
     }
 }
 
