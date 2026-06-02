@@ -1,10 +1,12 @@
 use crate::pick_word;
+use crate::Route;
 use chrono::{DateTime, Utc};
 // use gloo_console::log;
 use gloo_events::EventListener;
 use wasm_bindgen::JsCast;
 use web_sys::window;
 use yew::prelude::*;
+use yew_router::prelude::*;
 
 const EMPTY_LETTER: &str = "\u{00A0}"; // character shown to take up the space of a box without a letter
 const LETTERS_ROW1: [&str; 10] = ["q", "w", "e", "r", "t", "y", "u", "i", "o", "p"];
@@ -263,10 +265,15 @@ impl Component for Twordle {
                         let turns = self.typed_words.len();
                         let score = self.generate_score() as i64;
                         let word = self.wordle.to_uppercase();
+                        let navigator = ctx.link().navigator();
                         let (btn_text, btn_cb): (&str, Callback<MouseEvent>) = if ctx.props().game_type == GameType::Unlimited {
                             ("New Game", ctx.link().callback(|_: MouseEvent| Msg::PlayAgain))
                         } else {
-                            ("Play Unlimited", Callback::from(|_: MouseEvent| { let _ = window().unwrap().location().set_href("/unlimited"); }))
+                            ("Play Unlimited", Callback::from(move |_: MouseEvent| {
+                                if let Some(nav) = navigator.as_ref() {
+                                    nav.push(&Route::Unlimited);
+                                }
+                            }))
                         };
                         html!{
                             <div class="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
